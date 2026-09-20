@@ -1,14 +1,3 @@
----
-title: Etsy Review Intelligence
-emoji: 🛍️
-colorFrom: yellow
-colorTo: yellow
-sdk: docker
-app_port: 7860
-fullWidth: true
-short_description: AI sentiment and topic analysis for Etsy reviews.
----
-
 # Etsy Review Intelligence
 
 An end-to-end review intelligence platform that turns Etsy customer feedback into product, customer-experience, and marketing insights. Submit one to ten Etsy listing IDs or URLs to collect reviews, analyse sentiment, discover recurring themes, and compare product satisfaction in an interactive dashboard.
