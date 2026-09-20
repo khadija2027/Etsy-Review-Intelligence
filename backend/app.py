@@ -91,13 +91,19 @@ def report(filename: str) -> dict[str, Any]:
     try:
         if isinstance(payload.get("sentiment_analysis"), dict) and payload.get("reviews") is not None:
             kpi = payload["sentiment_analysis"]
-            if (kpi.get("cluster_metadata") or {}).get("analysis_version") != ANALYSIS_VERSION:
+            if (kpi.get("cluster_metadata") or {}).get("analysis_version") != ANALYSIS_VERSION or any(
+                not isinstance(review.get("sentiment"), dict) or review["sentiment"].get("score") is None
+                for review in payload["reviews"]
+            ):
                 payload["sentiment_analysis"] = analyse_reviews(payload["reviews"])
         elif payload.get("report_type") == "listing_comparison":
             changed = False
             for listing in payload.get("listings", []):
                 kpi = listing.get("sentiment_analysis") or {}
-                if (kpi.get("cluster_metadata") or {}).get("analysis_version") != ANALYSIS_VERSION:
+                if (kpi.get("cluster_metadata") or {}).get("analysis_version") != ANALYSIS_VERSION or any(
+                    not isinstance(review.get("sentiment"), dict) or review["sentiment"].get("score") is None
+                    for review in listing.get("reviews") or []
+                ):
                     listing["sentiment_analysis"] = analyse_reviews(listing.get("reviews") or [])
                     changed = True
             if changed:

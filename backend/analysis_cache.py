@@ -19,9 +19,15 @@ def analyse_cached(reviews):
     with _lock:
         if key in _cache:
             _cache.move_to_end(key)
-            return deepcopy(_cache[key]), True
+            result, annotations = deepcopy(_cache[key])
+            for review, annotation in zip(reviews, annotations):
+                review.update(annotation)
+            return result, True
         result = analyse_reviews(reviews)
-        _cache[key] = deepcopy(result)
+        # analyse_reviews also annotates its input; callers need those scores
+        # for review-level charts, even when the aggregate result is cached.
+        annotations = [{"sentiment": review["sentiment"]} if "sentiment" in review else {} for review in reviews]
+        _cache[key] = deepcopy((result, annotations))
         if len(_cache) > _MAX_ENTRIES:
             _cache.popitem(last=False)
         return result, False

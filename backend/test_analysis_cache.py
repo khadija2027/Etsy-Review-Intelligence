@@ -30,6 +30,27 @@ class AnalysisCacheTests(unittest.TestCase):
             self.assertFalse(hit)
         self.assertEqual(analyse.call_count, 3)
 
+    @patch("backend.analysis_cache.analyse_reviews")
+    def test_cache_hit_restores_review_sentiment_without_shared_mutations(self, analyse):
+        def annotate(reviews):
+            reviews[0]["sentiment"] = {"label": "positive", "score": 0.9}
+            reviews[1]["sentiment"] = {"label": "negative", "score": -0.8}
+            return {"total_reviews": 2}
+
+        analyse.side_effect = annotate
+        raw = [{"review_text": "Nice", "rating": 5}, {"review_text": "Bad", "rating": 1}]
+        first = [dict(review) for review in raw]
+        analysis_cache.analyse_cached(first)
+        first[0]["sentiment"]["score"] = 0
+        for _ in range(2):
+            fresh = [dict(review) for review in raw]
+            result, hit = analysis_cache.analyse_cached(fresh)
+            self.assertTrue(hit)
+            self.assertEqual(result, {"total_reviews": 2})
+            self.assertEqual([review["sentiment"]["score"] for review in fresh], [0.9, -0.8])
+            fresh[1]["sentiment"]["score"] = 0
+        analyse.assert_called_once()
+
     @patch("backend.analysis_cache.analyse_reviews", return_value={})
     def test_cache_is_bounded(self, analyse):
         for index in range(analysis_cache._MAX_ENTRIES + 1):
