@@ -1,0 +1,13 @@
+.git
+.env
+.env.*
+.venv/
+.venv311/
+__pycache__/
+*.pyc
+*.ipynb
+data/
+frontend/node_modules/
+frontend/dist/
+models/distilbert-amazon-reviews/baseline/
+models/distilbert-amazon-reviews/checkpoint-*/

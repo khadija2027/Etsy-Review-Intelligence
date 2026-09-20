@@ -1,0 +1,18 @@
+__pycache__/
+*.pyc
+.env
+.venv/
+.venv311/
+venv/
+.DS_Store
+*.log
+/data/*.json
+frontend/node_modules/
+frontend/dist/
+
+# Local environments, trained artifacts, and deployment checkout
+.venv*/
+/models/
+/etsy-review-intelligence/
+.env.*
+!.env.example
