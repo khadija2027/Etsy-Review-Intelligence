@@ -3,6 +3,10 @@
 .env.*
 .venv/
 .venv311/
+.venv*/
+tests/
+docs/
+notebooks/
 __pycache__/
 *.pyc
 *.ipynb

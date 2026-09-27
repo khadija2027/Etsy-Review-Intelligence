@@ -1,167 +1,182 @@
-# Etsy Review Intelligence
+﻿# Etsy Review Intelligence
 
-An end-to-end review intelligence platform that turns Etsy customer feedback into product, customer-experience, and marketing insights. Submit one to ten Etsy listing IDs or URLs to collect reviews, analyse sentiment, discover recurring themes, and compare product satisfaction in an interactive dashboard.
+**Turn customer reviews into sentiment insights, recurring product themes, and listing comparisons.**
 
-## Highlights
+An end-to-end NLP portfolio project combining transformer fine-tuning, unsupervised topic discovery, a FastAPI backend, and a React dashboard. Users enter one to ten Etsy listing IDs or URLs to explore customer feedback and compare products.
 
-- Built a FastAPI backend and React dashboard that ingest 1–10 Etsy listing IDs, retrieve reviews through the Etsy Open API, and save analysis reports as JSON.
-- Ranks products with a customer-satisfaction score weighted from review-text sentiment (60%) and average star rating (40%).
-- Fine-tuned a domain-adapted DistilBERT sentiment classifier and developed an explainable topic-discovery pipeline for actionable review analytics.
+## Project at a glance
 
-## Architecture
+| Area | Implementation |
+| --- | --- |
+| Problem | Star ratings alone do not explain what customers like or what needs improvement. |
+| Sentiment | DistilBERT adapted to Amazon Electronics reviews, then used to score Etsy review text. |
+| Topics | Sentence embeddings, UMAP, and HDBSCAN identify recurring themes without predefined topic labels. |
+| Application | Etsy API ingestion, interactive charts, saved JSON reports, and multi-listing rankings. |
+| Recorded result | Evaluation accuracy increased from **83.75% to 93.75%** on 400 Amazon reviews. |
 
-```text
-Etsy listing ID / URL
-        │
-        ▼
-FastAPI API ──► Etsy Open API ──► Review records
-        │                              │
-        ▼                              ▼
-React dashboard ◄── JSON reports ◄── NLP analysis pipeline
+The evaluation split also guided checkpoint selection; these results are development metrics, not an independent final test or an Etsy benchmark. See [model evaluation](#model-evaluation).
+
+**Explore the work:** [Training notebook](notebooks/fine_tune_distilbert_amazon_reviews.ipynb) · [NLP pipeline](backend/sentiment_analysis.py) · [API](backend/app.py) · [Dashboard](frontend/src/main.jsx)
+
+## What the application does
+
+- **Collect reviews:** fetch listing details and paginate through reviews exposed by the Etsy API, with retries for transient failures.
+- **Analyze sentiment:** score review text, summarize positive/negative/neutral feedback, and flag disagreements between text and star ratings.
+- **Discover topics:** group related review sentences, extract descriptive phrases, and surface representative feedback and topic sentiment.
+- **Explore results:** display sentiment trends, topic risks, rating-versus-sentiment charts, and a 2D topic map.
+- **Compare listings:** rank products using a configurable-in-code heuristic combining sentiment (60%) and star rating (40%).
+- **Reuse analysis:** save reports locally and cache up to eight analysis results in memory for identical review payloads and analysis versions.
+
+## How it works
+
+```mermaid
+flowchart LR
+    UI[React dashboard] --> API[FastAPI]
+    API --> Etsy[Etsy API: listing details and reviews]
+    Etsy --> NLP[Review analysis]
+    NLP --> Sentiment[Fine-tuned DistilBERT]
+    NLP --> Topics[Sentence embeddings / UMAP / HDBSCAN]
+    Sentiment --> Report[Metrics and JSON report]
+    Topics --> Report
+    Report --> UI
 ```
 
-The API validates requests, fetches every available review page for each listing, performs analysis, persists the response in `data/`, and returns the report to the dashboard. A single listing produces a detailed report; multiple listings produce a ranked comparison.
-
-## Sentiment model: fine-tuning and evaluation
-
-The model was fine-tuned from `distilbert-base-uncased-finetuned-sst-2-english` using a balanced 2,000-sample subset of Amazon Electronics reviews:
-
-- **Labels:** 1–2 star reviews as negative; 4–5 star reviews as positive; 3-star reviews excluded.
-- **Data split:** 80/20 stratified train/test split, giving 400 held-out test reviews.
-- **Training:** 3 epochs, maximum sequence length of 256, learning rate of `2e-5`.
-- **Selection metric:** F1 score, with evaluation and checkpointing after every epoch.
-
-| Model | Held-out accuracy | F1 score |
-| --- | ---: | ---: |
-| Base SST-2 model | 83.8% | 82.1% |
-| Fine-tuned Amazon-review model | **93.8%** | **93.7% macro F1** |
-
-The fine-tuned classifier improved accuracy by **10.0 percentage points** and macro F1 by **11.6 percentage points** over the baseline on the same held-out test set. The reproducible experiment, metric comparison, and confusion matrix are available in [`fine_tune_distilbert_amazon_reviews.ipynb`](fine_tune_distilbert_amazon_reviews.ipynb).
-
-## Explainable NLP analytics
-
-Beyond positive/negative classification, the pipeline produces interpretable review intelligence:
-
-- **Sentiment analysis:** fine-tuned DistilBERT scores each review and identifies rating-versus-text mismatches.
-- **Key-phrase extraction:** identifies frequent terms and bigrams with their average sentiment.
-- **Topic extraction and clustering:** embeds review sentences with `paraphrase-multilingual-MiniLM-L12-v2`, reduces embeddings with UMAP, and groups recurring themes using HDBSCAN.
-- **Explainability and diagnostics:** assigns semantic labels from centroid-nearest phrases; reports DBCV, silhouette score, noise ratio, cluster confidence, representative reviews, and sentiment breakdown per topic.
-- **Visual analytics:** interactive sentiment distribution, rating-versus-sentiment plot, topic-risk analysis, 2D intertopic distance map, and sentiment/topic trends over time.
-
-## Technology stack
+The backend fetches current reviews before checking the analysis cache. Single-listing requests return a detailed report; multi-listing requests return individual analyses, a ranking, and any listing-level failures. Reports are stored in `data/` and can be reopened from the dashboard.
 
 | Layer | Technologies |
 | --- | --- |
-| API and data collection | FastAPI, Uvicorn, Requests, Etsy Open API |
-| Frontend | React, Vite, Lucide React, custom CSS |
-| Sentiment ML | PyTorch, Hugging Face Transformers, fine-tuned DistilBERT |
-| Topic modelling | Sentence-Transformers, UMAP, HDBSCAN, scikit-learn |
-| Training and evaluation | Hugging Face Datasets/Trainer, pandas, scikit-learn, Matplotlib, Seaborn |
+| Backend | Python, FastAPI, Uvicorn, Requests |
+| Frontend | React, Vite, Lucide React, CSS |
+| Sentiment | PyTorch, Hugging Face Transformers, DistilBERT |
+| Topic discovery | Sentence-Transformers, UMAP, HDBSCAN, scikit-learn, NLTK |
+| Experiments | Hugging Face Datasets/Trainer, pandas, Matplotlib, Seaborn |
+| Packaging | Docker with a frontend build stage and Python runtime |
 
-## Local setup
+## Model evaluation
 
-### Prerequisites
+The [notebook](notebooks/fine_tune_distilbert_amazon_reviews.ipynb) includes training code, recorded outputs, a model comparison, and a confusion matrix.
 
-- Python 3.11+
-- Node.js 20+
-- Etsy API credentials
+- **Starting model:** `distilbert-base-uncased-finetuned-sst-2-english`.
+- **Dataset:** `contemmcm/amazon_reviews_2013`, `electronics` configuration. The stream is read until 1,000 examples per class are collected.
+- **Labels:** 1–2 stars → negative; 4–5 stars → positive; 3-star reviews excluded.
+- **Split:** 1,600 training and 400 evaluation examples, stratified with seed 42.
+- **Training:** three epochs, learning rate `2e-5`, maximum length 256 tokens, training batch size 16; best checkpoint selected by positive-class F1.
 
-### Install dependencies
+| Model | Accuracy | Positive-class F1 |
+| --- | ---: | ---: |
+| Base SST-2 model | 83.75% | 82.09% |
+| Amazon-adapted model | **93.75%** | **93.61%** |
+
+This is a **10.00 percentage-point accuracy improvement** and an **11.52 percentage-point F1 improvement** on the same evaluation examples. The fine-tuned model's separately reported macro F1 is 93.7%.
+
+**Evaluation scope:** the notebook calls this split `test`, but uses it for evaluation after each epoch and best-checkpoint selection. A separate untouched test set is needed for a final generalization estimate. These recorded results have not been established on labeled Etsy reviews.
+
+## Run locally
+
+Run commands from the repository root unless stated otherwise. Use **Python 3.11** for the existing dependency set and **Node.js 22.12+** for the frontend. Live analysis requires Etsy credentials, the trained sentiment model, and internet access for review collection and initial embedding-model downloads.
+
+### 1. Install Python dependencies
+
+Windows PowerShell:
 
 ```powershell
-.\.venv311\Scripts\Activate.ps1
-pip install -r requirements.txt
-python -c "import nltk; nltk.download('stopwords')"
-
-Push-Location frontend
-npm install
-Pop-Location
+py -3.11 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+python -m nltk.downloader stopwords
 ```
 
-Create `.env` in the project root:
+macOS / Linux:
+
+```bash
+python3.11 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+python -m nltk.downloader stopwords
+```
+
+Create a `.env` file in the repository root (or edit your existing one):
 
 ```env
-ETSY_API_KEY="your_etsy_keystring"
-ETSY_API_SECRET="your_etsy_shared_secret"
-ETSY_API_BASE_URL="https://openapi.etsy.com/v3"
-```
-
-### Run locally
-
-Run the production-style application:
-
-```powershell
-python app.py
-```
-
-Open `http://localhost:8000` after building the frontend:
-
-```powershell
-Push-Location frontend
-npm run build
-Pop-Location
-```
-
-For frontend development, use two terminals:
-
-```powershell
-# Terminal 1
-python app.py
-
-# Terminal 2
-Push-Location frontend
-npm run dev
-```
-
-Open the Vite application at `http://localhost:5173`.
-
-## API
-
-| Method | Endpoint | Description |
-| --- | --- | --- |
-| `GET` | `/api/health` | Health check |
-| `GET` | `/api/reports` | List saved reports |
-| `GET` | `/api/reports/{filename}` | Load a saved report |
-| `POST` | `/api/analyze` | Analyse one to ten Etsy listing IDs or URLs |
-
-Example request:
-
-```json
-{
-  "listing_ids": ["4364973626", "1234567890"]
-}
-```
-
-## Deploy to Hugging Face Spaces
-
-This repository is configured as a Docker Space. Create a Hugging Face Space with the **Docker** SDK, then push this repository. The included `Dockerfile` builds the React frontend and serves FastAPI on port `7860`.
-
-In **Settings → Variables and secrets**, add:
-
-```text
-ETSY_API_KEY
-ETSY_API_SECRET
-```
-
-Optionally add:
-
-```text
+ETSY_API_KEY=your_etsy_keystring
+ETSY_API_SECRET=your_etsy_shared_secret
 ETSY_API_BASE_URL=https://openapi.etsy.com/v3
 ```
 
-Model weights and training checkpoints are excluded from Git. Before building the Docker image, run `fine_tune_distilbert_amazon_reviews.ipynb` to generate the model, or restore your saved model to `models/distilbert-amazon-reviews/final`.
+Replace the placeholders with your credentials. The base URL matches the backend default. Credentials and generated reports are excluded from Git.
 
-Only the production model in `models/distilbert-amazon-reviews/final` is included in the Docker build; training checkpoints and local reports are excluded. Standard Hugging Face Space storage is ephemeral, so use persistent storage or a database if reports must survive restarts.
+### 2. Prepare the sentiment model
 
-## Project structure
+Trained weights are **not included in Git**. Restore an existing exported model to `models/distilbert-amazon-reviews/final/`, or run the training notebook:
+
+```bash
+python -m pip install jupyterlab
+python -m jupyterlab notebooks/fine_tune_distilbert_amazon_reviews.ipynb
+```
+
+Select the project environment as the notebook kernel and run all cells. The notebook saves the model and tokenizer to the location expected by the backend. Training downloads the source dataset and base model and may take time on CPU.
+
+### 3. Build the dashboard and start the app
+
+```bash
+cd frontend
+npm ci
+npm run build
+cd ..
+python -m uvicorn backend.app:app --host 127.0.0.1 --port 8000
+```
+
+Open **http://localhost:8000**. Enter one to ten real Etsy listing IDs or URLs, separated by commas or newlines. Interactive API documentation is available at **http://localhost:8000/docs**.
+
+For frontend development, run `python -m uvicorn backend.app:app --reload` in one terminal and `npm run dev` from `frontend/` in another. Open **http://localhost:5173**; Vite proxies `/api` requests to port 8000.
+
+## API and tests
+
+| Method | Endpoint | Purpose |
+| --- | --- | --- |
+| `GET` | `/api/health` | Service liveness; does not validate credentials or model availability |
+| `POST` | `/api/analyze` | Analyze 1–10 listing IDs or URLs |
+| `GET` | `/api/reports` | List saved report filenames |
+| `GET` | `/api/reports/{filename}` | Load a report and refresh outdated analysis when needed |
+
+Example request body for `/api/analyze` (replace the illustrative ID with a real listing):
+
+```json
+{
+  "listing_ids": ["1234567890"]
+}
+```
+
+Run the existing regression tests from the repository root:
+
+```bash
+python -m unittest discover -s tests -v
+```
+
+Tests cover cache reuse, invalidation, bounded capacity, annotation isolation, and saved-report repair. They mock expensive analysis and do not require Etsy credentials or model inference.
+
+## Repository layout
 
 ```text
-├── app.py                                  # FastAPI routes and report persistence
-├── etsy_reviews_service.py                 # Etsy API collection and pagination
-├── sentiment_analysis.py                   # Sentiment, phrase, and topic analysis
-├── fine_tune_distilbert_amazon_reviews.ipynb
-├── models/distilbert-amazon-reviews/final  # Fine-tuned inference model
-├── frontend/                               # React/Vite dashboard
-├── Dockerfile                              # Hugging Face Docker Space build
-└── requirements.txt
+backend/                  FastAPI routes, Etsy client, NLP pipeline, cache
+frontend/                 React dashboard and Vite configuration
+notebooks/                Fine-tuning experiment with recorded results
+tests/                    Backend regression tests
+docs/deployment.md        Docker instructions and operational notes
+models/                   Local model exports and checkpoints (ignored)
+data/                     Generated JSON reports (ignored)
+.env                      Local credentials (ignored; create during setup)
+requirements.txt          Python dependencies
+Dockerfile                Frontend build and API runtime
 ```
+
+## Limitations and next steps
+
+- **Domain and language:** sentiment is trained on English Amazon Electronics reviews. Multilingual topic embeddings do not make the sentiment model multilingual; Etsy performance needs separate validation.
+- **Neutral sentiment:** this is a binary classifier. The application assigns neutral to scores between -0.2 and 0.2, and to empty review text; neutral is not a learned class.
+- **Long reviews:** inference currently uses the first 512 characters, while notebook training uses a 256-token limit.
+- **Topic quality:** clusters and their labels are exploratory. DBCV, silhouette, and noise ratio are reported when applicable; small or noisy datasets may yield few useful themes.
+- **Product ranking:** the 60/40 satisfaction score is a heuristic, not a calibrated business outcome or a measure of statistical significance.
+- **Deployment:** reports use local files and the API has no authentication. See [deployment notes](docs/deployment.md) before operating a shared instance.
+
+Next steps include an independent Etsy evaluation set, aligned training/inference preprocessing, pinned experiment dependencies, and persistent report storage with access controls.

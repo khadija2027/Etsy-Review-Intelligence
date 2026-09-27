@@ -10,9 +10,7 @@ venv/
 frontend/node_modules/
 frontend/dist/
 
-# Local environments, trained artifacts, and deployment checkout
+# Local environments and trained artifacts
 .venv*/
 /models/
-/etsy-review-intelligence/
 .env.*
-!.env.example

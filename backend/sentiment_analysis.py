@@ -23,7 +23,7 @@ def _sentiment_pipeline():
     if not (MODEL_DIR / "config.json").is_file():
         raise FileNotFoundError(
             f"Fine-tuned sentiment model not found at '{MODEL_DIR}'. "
-            "Run fine_tune_distilbert_amazon_reviews.ipynb to create it."
+            "Run notebooks/fine_tune_distilbert_amazon_reviews.ipynb to create it."
         )
     return pipeline("sentiment-analysis", model=str(MODEL_DIR), tokenizer=str(MODEL_DIR))
 
