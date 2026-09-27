@@ -162,7 +162,6 @@ backend/                  FastAPI routes, Etsy client, NLP pipeline, cache
 frontend/                 React dashboard and Vite configuration
 notebooks/                Fine-tuning experiment with recorded results
 tests/                    Backend regression tests
-docs/deployment.md        Docker instructions and operational notes
 models/                   Local model exports and checkpoints (ignored)
 data/                     Generated JSON reports (ignored)
 .env                      Local credentials (ignored; create during setup)
