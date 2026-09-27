@@ -169,14 +169,3 @@ data/                     Generated JSON reports (ignored)
 requirements.txt          Python dependencies
 Dockerfile                Frontend build and API runtime
 ```
-
-## Limitations and next steps
-
-- **Domain and language:** sentiment is trained on English Amazon Electronics reviews. Multilingual topic embeddings do not make the sentiment model multilingual; Etsy performance needs separate validation.
-- **Neutral sentiment:** this is a binary classifier. The application assigns neutral to scores between -0.2 and 0.2, and to empty review text; neutral is not a learned class.
-- **Long reviews:** inference currently uses the first 512 characters, while notebook training uses a 256-token limit.
-- **Topic quality:** clusters and their labels are exploratory. DBCV, silhouette, and noise ratio are reported when applicable; small or noisy datasets may yield few useful themes.
-- **Product ranking:** the 60/40 satisfaction score is a heuristic, not a calibrated business outcome or a measure of statistical significance.
-- **Deployment:** reports use local files and the API has no authentication. See [deployment notes](docs/deployment.md) before operating a shared instance.
-
-Next steps include an independent Etsy evaluation set, aligned training/inference preprocessing, pinned experiment dependencies, and persistent report storage with access controls.
